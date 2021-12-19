@@ -1,9 +1,15 @@
 from pythonosc.osc_message_builder import OscMessageBuilder
-from pythonosc.osc_message import OscMessage
-from pythonosc.osc_bundle import OscBundle
 from pythonosc.osc_server import OSCUDPServer
+from pythonosc.osc_message import OscMessage
 from pythonosc.dispatcher import Dispatcher
+from pythonosc.osc_bundle import OscBundle
+from typing import Union, Tuple
+import socket
+import threading
+import sys
 
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
 class OSCServerClient(OSCUDPServer):
 
@@ -38,7 +44,11 @@ class OSCThread(threading.Thread):
                        needs_reply_address=True)
         dispatcher.map('/loop', self.respond_to_loop,
                        needs_reply_address=True)
-        print(f"[OSC] starting server at {host}:{port}")
+        dispatcher.map('/format', self.respond_to_format,
+                       needs_reply_address=True)
+        dispatcher.map('/norm', self.respond_to_norm,
+                       needs_reply_address=True)
+        eprint(f"[OSC] starting server at {host}:{port}")
         self.osc_server = OSCServerClient((host, port), dispatcher)
 
     def run(self):
@@ -49,10 +59,20 @@ class OSCThread(threading.Thread):
 
     def respond_to_loop(self, client_addr, cmd, *args):
         looping  = args[0] > 0
-        self.mem_reader.set_looping(looping)
+        self.mem_reader.loop = looping
+
+    def respond_to_norm(self, client_addr, cmd, *args):
+        self.mem_reader.normalize = args[0]
+
+    def respond_to_format(self, client_addr, cmd, *args):
+        format  = args[0]
+        valid_formats = ['b','B','h','H','i','I','f']
+        if format in valid_formats:
+            self.mem_reader.format = format
 
     def respond_to_skip(self, client_addr, cmd, *args):
         pid, block_n = args
-        self.mem_reader.skip(pid, block_n)
+        if pid == 0 or pid == '0':
+            pid = None
+        self.mem_reader.request_skip(pid, block_n)
         # self.osc_server.send_message(client_addr, cmd, self.loaded_model_names)
-
