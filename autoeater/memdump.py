@@ -34,29 +34,45 @@ class ProcMapsDump():
 
     def __del__(self):
         self.close()
-
-    def open(self, pid='self'):
+    
+    def read_maps(self, pid='self'):
         if pid == 'self':
             pid = os.getpid()
         elif isinstance(pid, str):
             pid = int(pid)
         eprint('Opening maps for pid', pid)
+        maps = None
         try:
-            self.maps = procmaps.from_pid(pid)[:-1]
+            maps = procmaps.from_pid(pid)[:-1]
         except OSError as err:
             eprint(f'Error reading maps for pid {pid}: {err}')
             return False
-        if len(self.maps) == 0:
+        if len(maps) == 0:
             eprint(f'Empty memory maps for pid {pid}.')
             return False
+        return maps
+
+    def get_maps_len(self, pid):
+        maps = self.read_maps(pid)
+        if maps == False: return 0
+        return len(maps)
+
+    def open(self, pid='self'):
+        self.maps = self.read_maps(pid)
+        if self.maps == False: return False
         self.current_map_i = 0
         self.close()
+
+        if pid == 'self':
+            pid = os.getpid()
+        elif isinstance(pid, str):
+            pid = int(pid)
+
         try:
             self.f = os.open(f"/proc/{pid}/mem", os.O_RDONLY | os.O_SYNC)
         except PermissionError:
             eprint(f"/proc/{pid}/mem: permission denied")
             exit()
-            return False
         except FileNotFoundError:
             eprint(f"/proc/{pid}/mem: file not found")
             return False

@@ -4,6 +4,7 @@ from pythonosc.osc_message import OscMessage
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_bundle import OscBundle
 from typing import Union, Tuple
+from collections.abc import Iterable
 import socket
 import threading
 import sys
@@ -40,6 +41,8 @@ class OSCThread(threading.Thread):
         super(OSCThread, self).__init__()
         self.mem_reader = mem_reader
         dispatcher = Dispatcher()
+        dispatcher.map('/info', self.respond_to_info,
+                       needs_reply_address=True)
         dispatcher.map('/skip', self.respond_to_skip,
                        needs_reply_address=True)
         dispatcher.map('/loop', self.respond_to_loop,
@@ -75,4 +78,10 @@ class OSCThread(threading.Thread):
         if pid == 0 or pid == '0':
             pid = None
         self.mem_reader.request_skip(pid, block_n)
-        # self.osc_server.send_message(client_addr, cmd, self.loaded_model_names)
+
+    def respond_to_info(self, client_addr, cmd, *args):
+        pid = args[0]
+        if pid == 0 or pid == '0':
+            pid = None
+        num_blocks = self.mem_reader.get_maps_len(pid)
+        self.osc_server.send_message(client_addr, cmd, [pid, num_blocks])

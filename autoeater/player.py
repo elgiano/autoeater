@@ -10,6 +10,18 @@ def asciiart(values):
         asciiart += grayscale[int(min(66, max(0, v * 66)))]
     return asciiart
 
+def colorize(text, r, g, b, background = False):
+    RESET = '\033[0m'
+    return '\033[{};2;{};{};{}m'.format(48 if background else 38, r, g, b) + text + RESET
+
+def asciiart_color(values):
+    grayscale = " .`^\",:;Il!i~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$" #67 levels of gray
+    asciiart = ""
+    colors = [[int(v * 256) for v in i] for i in zip(*[iter(values)]*3)]
+    for (v, c) in zip(values, colors):
+        asciiart += colorize(grayscale[int(min(66, max(0, v * 66)))], *c)
+    return asciiart
+
 class StdinPlayer():
     def __init__(self, rate=48000, block_size=2048, output_device=None):
         self.output_device = output_device
